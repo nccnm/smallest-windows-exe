@@ -70,12 +70,14 @@ The two Crinkler files are detected by Windows Defender as `Trojan:Win32/Crysant
 | `ram2-user32.exe` | `ram/b_getmsg.c` | 2,560 | adds user32, waits in `GetMessage`, no window |
 | `ram3-window.exe` | `ram/c_window.c` | 3,072 | one window: 26 DLLs after about 30 s |
 | `ram4-window-noime.exe` | `ram/n_noime.c` | 3,072 | one window after `ImmDisableIME(-1)` |
-| `hello-c.exe` | `ram/hello_idle.c` | 784 | no-CRT Hello World that stays alive |
-| `hello-go.exe` | `ram/hello_idle.go` | 1,484,288 | Go Hello World that stays alive |
 | `crinkler-standard.exe` | `crinkler-ram/build.cmd` (`ram/a_sleep.c`, x86) | 435 | default Crinkler mode: about 514 MB private bytes |
 | `pulsar-mini.exe` | `pulsar-mini/` | 7,984 | a taskbar CPU/RAM/network widget in C without the CRT |
 
-Numbers stated in the video for these programs (one run each; the report has medians of repeated runs): ram1 to ram4 about 470, 900, 1,750 and 1,320 KB private bytes; Go 12,396 KB against C 432 KB; Zig (`zig_small.exe`, 483,840 bytes) 580 KB against C (`msvc_nocrt_tuned.exe`) 432 KB peak private; pulsar-mini 1,380 KB.
+Numbers stated in the video for these programs (one run each; the report has medians of repeated runs): ram1 to ram4 about 470, 900, 1,750 and 1,320 KB private bytes; pulsar-mini 1,380 KB.
+
+Go, C and Zig are compared with the same Hello World builds as in the size table, not with special versions: `msvc_nocrt_tuned.exe` (768 bytes), `go_stripped.exe` (1,478,656 bytes) and `zig_small.exe` (483,840 bytes). Each runs to its end under `tools/runstat.exe`, which reports its peak private memory. The video shows C 432 KB, Go 12,072 KB (about 28 times more) and Zig 576 KB; see "Go, C and Zig" below.
+
+`ram/hello_idle.c` and `ram/hello_idle.go` are variants that wait instead of exiting, for watching the process in Task Manager. They are not used in the video.
 
 ## Requirements
 
@@ -206,10 +208,8 @@ The 435-byte file holds about 526,536 KiB (514 MB) of private bytes at 60 s, bec
 ### 6. RAM: file size against what the program loads (act 6)
 
 ```powershell
-pwsh -File ram\build-video.ps1   # builds ram\out\ram1-kernel32.exe ... ram4-window-noime.exe, hello-c.exe, hello-go.exe
+pwsh -File ram\build-video.ps1   # builds ram\out\ram1-kernel32.exe ... ram4-window-noime.exe (and the hello_idle variants)
 Set-Location ram\out
-Start-Process .\hello-go.exe -NoNewWindow; Start-Process .\hello-c.exe -NoNewWindow
-Get-Process hello-* | Format-Table Name, @{n='PrivateKB'; e={$_.PrivateMemorySize64 / 1KB}}, @{n='Threads'; e={$_.Threads.Count}}
 Start-Process .\ram1-kernel32.exe -NoNewWindow; 'ram2-user32', 'ram3-window', 'ram4-window-noime' | ForEach-Object { Start-Process ".\$_.exe" }
 Get-Process ram* | Format-Table Name, @{n='PrivateKB'; e={$_.PrivateMemorySize64 / 1KB}}, @{n='DLLs'; e={$_.Modules.Count - 1}}, @{n='Threads'; e={$_.Threads.Count}}
 Get-Process hello-*, ram* | Stop-Process
@@ -217,12 +217,16 @@ Get-Process hello-*, ram* | Stop-Process
 
 The window builds load the IME and text input DLLs about 30 seconds after start; measure after that to see the 26 DLLs.
 
-Zig against C, peak private memory of a full run, with `tools\runstat.exe`:
+#### Go, C and Zig
+
+The same three Hello World builds as in the size table, each run to its end under `tools\runstat.exe`, which prints its peak private memory. In the video the files are copied as `hello-c.exe`, `hello-go.exe` and `hello-zig.exe`; the bytes are unchanged.
 
 ```powershell
 cmd /c '"C:\Program Files\Microsoft Visual Studio\18\Community\VC\Auxiliary\Build\vcvars64.bat" >nul && cd tools && cl /nologo /O1 runstat.c /link psapi.lib'
-'msvc_nocrt_tuned.exe', 'zig_small.exe' | ForEach-Object { $r = tools\runstat.exe "hello\out\$_" | ConvertFrom-Json; [pscustomobject]@{Name = $_; PrivateKB = $r.peak_private_kb} } | Format-Table
+'msvc_nocrt_tuned.exe', 'go_stripped.exe', 'zig_small.exe' | ForEach-Object { $r = tools\runstat.exe "hello\out\$_" | ConvertFrom-Json; [pscustomobject]@{Name = $_; PeakPrivateKB = $r.peak_private_kb} } | Format-Table
 ```
+
+In the video: C 432 KB, Go 12,072 KB, Zig 576 KB. The numbers move a little from run to run and from machine to machine.
 
 Repeated measurements, as in the report:
 
