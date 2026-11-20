@@ -1,0 +1,24 @@
+; FASM PE64 console hello (FASM's own PE writer, no linker)
+format PE64 console
+entry start
+include 'win64a.inc'
+section '.text' code readable executable
+start:
+    sub rsp, 8*7
+    mov ecx, STD_OUTPUT_HANDLE
+    call [GetStdHandle]
+    mov rcx, rax
+    lea rdx, [msg]
+    mov r8d, msglen
+    lea r9, [written]
+    mov qword [rsp+32], 0
+    call [WriteFile]
+    xor ecx, ecx
+    call [ExitProcess]
+section '.data' data readable writeable
+msg db 'Hello, World!',13,10
+msglen = $ - msg
+written dd 0
+section '.idata' import data readable writeable
+library kernel32,'KERNEL32.DLL'
+import kernel32, GetStdHandle,'GetStdHandle', WriteFile,'WriteFile', ExitProcess,'ExitProcess'

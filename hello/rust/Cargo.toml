@@ -1,0 +1,16 @@
+[package]
+name = "hello_std"
+version = "0.1.0"
+edition = "2024"
+
+[[bin]]
+name = "hello_std"
+path = "src/main.rs"
+
+[profile.min]
+inherits = "release"
+opt-level = "z"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true

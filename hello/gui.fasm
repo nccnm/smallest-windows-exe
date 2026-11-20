@@ -1,0 +1,21 @@
+; FASM PE64 GUI MessageBox hello
+format PE64 GUI 5.0
+entry start
+include 'win64a.inc'
+section '.text' code readable executable
+start:
+    sub rsp, 8*5
+    xor ecx, ecx
+    lea rdx, [msg]
+    lea r8, [cap]
+    xor r9d, r9d
+    call [MessageBoxA]
+    xor ecx, ecx
+    call [ExitProcess]
+section '.data' data readable writeable
+msg db 'Hello, World!',0
+cap db 'Hello',0
+section '.idata' import data readable writeable
+library kernel32,'KERNEL32.DLL', user32,'USER32.DLL'
+import kernel32, ExitProcess,'ExitProcess'
+import user32, MessageBoxA,'MessageBoxA'

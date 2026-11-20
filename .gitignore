@@ -1,0 +1,29 @@
+# Build outputs
+*.exe
+*.com
+*.COM
+*.obj
+*.pdb
+*.ilk
+*.lib
+*.exp
+*.res
+*.bin
+out/
+target/
+__pycache__/
+
+# Third-party toolchains (FASM, Zig, Crinkler): download them yourself, see README.md
+toolchains/
+
+# Measurement logs written by the scripts (report/raw/ is part of the report and is tracked)
+/raw/
+*.jsonl
+crinkler-ram/*.txt
+crinkler-ram/samples.md
+tiny-files/bin/
+tiny-files/results_*.json
+
+# Generated figure files
+tools/imhex/vi/
+tools/imhex/figures.json
