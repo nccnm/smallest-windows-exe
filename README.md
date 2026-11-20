@@ -40,14 +40,14 @@ All print `Hello, World!` (console) or show a `Hello, World!` message box (GUI, 
 | `rust_nostd_min.exe` | Rust | rustc 1.99.1 | `#![no_std]`, linker flags in `build.rs` | 848 |
 | `gcc_gui_nocrt.exe` | C | GCC 16.1.0 | `-nostdlib -mwindows`, alignment 16 | 816 |
 | `gcc_nocrt.exe` | C | GCC 16.1.0 | `-nostdlib`, alignment 16 | 800 |
-| `msvc_gui_nocrt_tuned.exe` | C | MSVC 14.51 | no CRT + tuned linker flags, MessageBox | 784 |
+| `msvc_gui_nocrt_tuned.exe` | C | MSVC 14.51 | no CRT + tuned linker flags, MessageBox (GUI variant, not in the video) | 784 |
 | `msvc_nocrt_tuned.exe` | C | MSVC 14.51 | no CRT + `/ALIGN:16 /FILEALIGN:16 /MERGE:...` | 768 |
 | `nasm_tiny64_gui.exe` | Assembly | NASM 3.01 | `nasm -f bin -DGUI`, PE written by hand | 588 |
 | `nasm_tiny64_cli.exe` | Assembly | NASM 3.01 | `nasm -f bin`, PE written by hand | 584 |
 | `crinkler_x86_cli.exe` | C (x86) | Crinkler 3.0b | `/TINYHEADER /TINYIMPORT /UNSAFEIMPORT` | 355 |
 | `crinkler_x86_gui.exe` | C (x86) | Crinkler 3.0b | same, MessageBox | 351 |
 
-The two Crinkler files are detected by Windows Defender as `Trojan:Win32/Crysant.RPS!MTB` and deleted within about a minute of being written. This is a false positive caused by the packer's fingerprint; the source is the same `c_nocrt.c` and `gui_nocrt.c` as the other C builds. The other 27 builds were scanned clean.
+The two Crinkler files are detected by Windows Defender as `Trojan:Win32/Crysant.RPS!MTB` and deleted within about a minute of being written. This is a false positive caused by the packer's fingerprint; the source is the same `c_nocrt.c` and `gui_nocrt.c` as the other C builds. The other 27 builds were scanned clean. Crinkler only makes 32-bit (x86) files, so these two are 32-bit builds of the same C source, while the 584-byte NASM build they are compared with in the video is 64-bit.
 
 ### Hand-made files
 
@@ -61,6 +61,7 @@ The two Crinkler files are detected by Windows Defender as `Trojan:Win32/Crysant
 | `tiny-files/133.exe` | `sweep2.build32(133)` | 133 | rejected, error 216 |
 | `tiny-files/97.exe` | `sweep2.build32(97)` | 97 | rejected, error 216 |
 | `tiny-files/20.com` | `make20.py`, 16-bit DOS .COM | 20 | rejected ("Unsupported 16-Bit Application") |
+| `tiny768.exe` (video only) | a copy of `hello/out/msvc_nocrt_tuned.exe`, the C build from act 3 | 768 | runs, prints `Hello, World!` in a terminal |
 
 ### RAM programs (`ram/`, `crinkler-ram/`, `pulsar-mini/`)
 
@@ -113,7 +114,7 @@ toolchains/
 hello/          Hello World in C (CRT, no CRT, GUI), NASM, FASM, Go, Zig, Rust std and no_std; build.ps1
 pe268/          make268.py (the 268-byte exe), make268hello.py and hello268.asm (268-byte Hello World)
 tiny-files/     the 20/97/133/252/267/268-byte test files: generators, size sweeps, run-all.cmd
-ram/            RAM and idle-CPU test programs (R3 measurements) and the video's RAM scene builds
+ram/            RAM and idle-CPU test programs (R3 measurements), the video's RAM ladder builds (build-video.ps1) and the Go, C and Zig comparison (compare.ps1)
 crinkler-ram/   the 435-byte Crinkler program that uses about 514 MB of RAM, and its measurement
 pulsar-mini/    the taskbar widget rewritten in C without the CRT (7,984 bytes)
 tools/          runstat.c, measure-hello.ps1, measure-resident.ps1, pe-anatomy.py, make-hex-figure.py, imhex/ captures
@@ -172,6 +173,14 @@ python sweep2.py              # x64 268/267/266/264/260 and x86 252 down to 97 b
 
 The sweeps write the test files into `tiny-files\bin\` and their results to `results_*.json`, with Windows error dialogs suppressed.
 
+At the end of act 4 the video puts the 768-byte C build from act 3 next to these files, as `tiny768.exe`, and runs it in a terminal opened in the same folder. It is a console program: double-clicked, its window closes at once.
+
+```powershell
+Copy-Item ..\hello\out\msvc_nocrt_tuned.exe .\tiny768.exe   # build hello\ first
+(Get-Item .\tiny768.exe).Length                                # 768
+.\tiny768.exe                                                  # Hello, World!
+```
+
 ### 4. Antivirus scan (act 5)
 
 Build `hello\` first, then scan the 27 non-Crinkler builds in one folder, as in the video:
@@ -208,11 +217,11 @@ The 435-byte file holds about 526,536 KiB (514 MB) of private bytes at 60 s, bec
 ### 6. RAM: file size against what the program loads (act 6)
 
 ```powershell
-pwsh -File ram\build-video.ps1   # builds ram\out\ram1-kernel32.exe ... ram4-window-noime.exe (and the hello_idle variants)
+pwsh -File ram\build-video.ps1   # builds ram\out\ram1-kernel32.exe ... ram4-window-noime.exe
 Set-Location ram\out
 Start-Process .\ram1-kernel32.exe -NoNewWindow; 'ram2-user32', 'ram3-window', 'ram4-window-noime' | ForEach-Object { Start-Process ".\$_.exe" }
 Get-Process ram* | Format-Table Name, @{n='PrivateKB'; e={$_.PrivateMemorySize64 / 1KB}}, @{n='DLLs'; e={$_.Modules.Count - 1}}, @{n='Threads'; e={$_.Threads.Count}}
-Get-Process hello-*, ram* | Stop-Process
+Get-Process ram* | Stop-Process
 ```
 
 The window builds load the IME and text input DLLs about 30 seconds after start; measure after that to see the 26 DLLs.
@@ -222,8 +231,15 @@ The window builds load the IME and text input DLLs about 30 seconds after start;
 The same three Hello World builds as in the size table, each run to its end under `tools\runstat.exe`, which prints its peak private memory. In the video the files are copied as `hello-c.exe`, `hello-go.exe` and `hello-zig.exe`; the bytes are unchanged.
 
 ```powershell
-cmd /c '"C:\Program Files\Microsoft Visual Studio\18\Community\VC\Auxiliary\Build\vcvars64.bat" >nul && cd tools && cl /nologo /O1 runstat.c /link psapi.lib'
-'msvc_nocrt_tuned.exe', 'go_stripped.exe', 'zig_small.exe' | ForEach-Object { $r = tools\runstat.exe "hello\out\$_" | ConvertFrom-Json; [pscustomobject]@{Name = $_; PeakPrivateKB = $r.peak_private_kb} } | Format-Table
+pwsh -File ram\compare.ps1      # needs hello\ built; builds tools\runstat.exe if missing
+```
+
+It copies the three builds to `ram\compare\` and runs the commands typed in the video:
+
+```powershell
+.\hello-c.exe; .\hello-go.exe
+Get-ChildItem hello-*.exe | Format-Table Name, Length
+'hello-c.exe', 'hello-go.exe', 'hello-zig.exe' | ForEach-Object { $r = .\runstat.exe ".\$_" | ConvertFrom-Json; [pscustomobject]@{Name = $_; PeakPrivateKB = $r.peak_private_kb} } | Format-Table
 ```
 
 In the video: C 432 KB, Go 12,072 KB, Zig 576 KB. The numbers move a little from run to run and from machine to machine.

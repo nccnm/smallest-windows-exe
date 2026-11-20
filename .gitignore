@@ -27,3 +27,4 @@ tiny-files/results_*.json
 # Generated figure files
 tools/imhex/vi/
 tools/imhex/figures.json
+ram/compare/
